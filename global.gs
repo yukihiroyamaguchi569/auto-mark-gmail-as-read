@@ -1,1 +1,1 @@
-
+const labeNameChecked = "AIチェック済";
