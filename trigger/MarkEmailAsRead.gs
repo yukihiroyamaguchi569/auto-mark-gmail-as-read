@@ -40,7 +40,7 @@ function triggerMarkEmailAsRead() {
 
     // 日付が存在しない場合は1ヶ月前の日付を計算して返す
     const now = new Date();
-    const dateOneMonthAgo = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+    const dateOneMonthAgo = new Date(now.getFullYear(), now.getMonth() , now.getDate() );
     return new Date(dateOneMonthAgo);
   };
 
@@ -104,6 +104,51 @@ function triggerMarkEmailAsRead() {
     return objJson;
   });
 
+async function analyzeEmails(aryFilEmail) {
+  const aryObjAnlyEmail = await Promise.all(aryFilEmail.map(async (objEmail) => {
+    // メール本文を取得
+    const body = objEmail.body;
+
+    // システムロールの設定
+    const systemRole = 'あなたは「だよ・だね」と親しみやすい言葉で話すAIアシスタントです。あなたは、メールの本文を解析し、そのメールが返信や他のリアクションが必要かどうかを0から10の数値で判別します。回答は必ずJSON形式で出力します。';
+
+    // プロンプトの設定
+    const prompt = '以下のメール本文を評価してください。リアクションが必要かどうかを0から10のスケールで数値で示し、リアクションが必要な理由とメール本文の要約を併せて指定されたJSONスキーマで出力してください。'
+      + '### メール本文:' + body + '\n'
+      + '### 出力JSONスキーマ:{"necessity": [0から10のスケールの数値],"reason": [リアクションが必要な理由],"summary": [メール本文の要約]}';
+
+    // OpenAIChat APIを使って応答を取得
+    const response = await openAIChat.askSimple(systemRole, prompt, model);
+
+    // 応答をJSONとして解析
+    const objJson = JSON.parse(response);
+
+    // メールIDを追加
+    objJson.id = objEmail.id;
+
+    // メール受信日時を追加
+    objJson.date = objEmail.date;
+
+    // メール件名を追加
+    objJson.subject = objEmail.subject;
+
+    // 最後の未読メールの日付を更新
+    PropertiesService.getScriptProperties().setProperty('DATE_LAST_UNREAD', objEmail.date);
+
+    // 解析結果を返す
+    return objJson;
+  }));
+
+  return aryObjAnlyEmail;
+}
+
+(async () => {
+  const aryObjAnlyEmail = await analyzeEmails(aryFilEmail);
+  // ここでaryObjAnlyEmailを元のコードと同じように使用できます
+})();
+
+
+
   // ユーザーのメールアドレスを取得
   const userEmail = Session.getActiveUser().getEmail();
 
@@ -125,8 +170,11 @@ function triggerMarkEmailAsRead() {
     // リアクションの必要性が高い場合、LINEに通知する
     if (objAnly.necessity >= numNeedReaction) { new LineNotify(accessToken).send(message) };
 
+    console.log(message);
+
     // リアクションの必要性が低い場合、メールを既読にする
     if (objAnly.necessity < numNeedReaction) { markMailAsRead_(objAnly.id, true) };
+    // if (objAnly.necessity < numNeedReaction) { labelMailAsChecked_(objAnly.id, true) };
   })
 }
 
@@ -138,7 +186,8 @@ function triggerMarkEmailAsRead() {
 
 function getAllUnreadEmails_() {
   // 未読メールスレッドを全て取得する
-  const aryThreads = GmailApp.search('is:unread');
+  // const aryThreads = GmailApp.search('is:unread');
+  const aryThreads = GmailApp.search('-label:aiチェック済');
 
   // メールのIDと本文をオブジェクトにまとめる
   const aryObjEmail = aryThreads.flatMap(thread => {
@@ -170,5 +219,20 @@ function markMailAsRead_(idMessage, isRead) {
 
   // メッセージが存在し、かつisReadがtrueの場合はメールを既読にする
   if (message && isRead) { message.markRead() };
+}
+
+/**
+ * メールのメッセージIDと既読フラグを受け取って、メールをラベルをつける関数
+ *
+ * @param {string} idMessage - メールのメッセージID
+ * @param {boolean} isRead - メールを既読にするかどうかのフラグ
+ * @return {void}
+ */
+function labelMailAsChecked_(idMessage, isRead) {
+  // Gmailのメッセージを取得する
+  const message = GmailApp.getMessageById(idMessage);
+
+  // メッセージが存在し、かつisReadがtrueの場合はメールを既読にする
+  if (message && isRead) { message.addLabel(labeNameChecked) };
 }
 

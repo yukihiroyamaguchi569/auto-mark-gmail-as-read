@@ -201,3 +201,19 @@ function testOpenAIChatAPI() {
   // 回答をコンソールに出力
   console.log(openAIChat.askSimple(systemRole, prompt, model));
 }
+
+/**
+ * スクリプトプロパティにOPENAIのAPIキーを書き込み、確認する関数
+ * 初回のみ使用
+ */
+
+function setAndGetOpenaiApiKey(){
+ const properties = PropertiesService.getScriptProperties();
+
+ properties.setProperty('OPENAI_API_KEY','ここにAPIキーを入れる');
+ 
+ const apiKey = properties.getProperty("OPENAI_API_KEY");
+
+ console.log(apiKey)
+
+}

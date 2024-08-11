@@ -14,6 +14,7 @@
 
 'use strict'
 
+
 class LineNotify {
   /**
    * コンストラクタ
@@ -56,9 +57,25 @@ class LineNotify {
 
 function testLineNotify() {
   // アクセストークンを設定
-  const accessToken = PropertiesService.getScriptProperties().getProperty('LINE_NOTIFY_TOKEN');
+  const accessToken = PropertiesService.getScriptProperties().getProperty('accessToken');
   // テスト送信するメッセージ
   const message = 'こんにちは！これはテストメッセージだよ。';
   // メッセージを送信
   new LineNotify(accessToken).send(message);
+}
+
+/**
+ * スクリプトプロパティにLINEアクセストークンを書き込み、確認する関数
+ * 初回のみ使用
+ */
+
+function setAndGetAccessToken(){
+ const properties = PropertiesService.getScriptProperties();
+
+ properties.setProperty('accessToken','ここにアクセストークンを書く');
+ 
+ const accessToken = properties.getProperty("accessToken");
+
+ console.log(accessToken)
+
 }
